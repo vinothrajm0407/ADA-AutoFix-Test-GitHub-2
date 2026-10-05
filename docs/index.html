@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="TaskFlow Analytics demo dashboard">
+<style>
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#f4f5f7; color:#222; }
+  header.topbar { background:#2454a8; color:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
+  .brand { font-weight:bold; font-size:18px; }
+  .badge { font-size:11px; background:#173a73; padding:3px 8px; border-radius:10px; }
+  nav.tabs { display:flex; gap:18px; padding:10px 24px; background:#fff; border-bottom:1px solid #ddd; }
+  nav.tabs a { color:#2454a8; text-decoration:none; font-size:14px; }
+  .wrap { padding:24px; max-width:960px; margin:0 auto; }
+  .card { background:#fff; border:1px solid #e1e3e6; border-radius:8px; padding:18px; margin-bottom:18px; }
+  .muted { color: #72767b; }
+  .toolbar { display:flex; gap:8px; margin-top:10px; }
+  .toolbar button { border:1px solid #ccd0d5; background:#f8f9fa; padding:6px 10px; border-radius:4px; cursor:pointer; }
+  table { border-collapse:collapse; width:100%; margin-top:10px; }
+  th, td { border:1px solid #e1e3e6; padding:6px 10px; text-align:left; font-size:13px; }
+  .tiny-target { display:inline-block; width:10px; height:10px; background:#2454a8; border-radius:2px; }
+  .scrollbox { height:70px; overflow-y:scroll; border:1px solid #e1e3e6; padding:8px; font-size:12px; }
+  .visually-tiny { position:absolute; width:1px; height:1px; overflow:hidden; }
+  footer { text-align:center; padding:20px; font-size:12px; color: #6c7077; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">TaskFlow Analytics <span class="badge">Demo</span></span>
+</header>
+<nav class="tabs">
+  <a href="index.html">Overview</a>
+  <a href="profile.html">Profile</a>
+  <a href="search.html">Search</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- image-alt: informative image with no alt text.
+       aria-allowed-attr: img also carries an aria attribute not allowed on its role. -->
+  <img src="https://via.placeholder.com/300x120.png?text=Weekly+Report" width="300" height="120">
+
+  <div class="card">
+    <h2>Team performance</h2>
+    <!-- heading-order: h2 -> h4 skips h3 (no h1 anywhere on this page => page-has-heading-one) -->
+    <h4>Breakdown by project</h4>
+    <p style="color: #747678; background:#ffffff;">Quarterly totals across every active workspace this cycle.</p>
+
+    <!-- duplicate-id: two elements share the same id, unrelated to aria -->
+    <span id="page-badge">Beta</span>
+    <span id="page-badge">Live</span>
+
+    <!-- th-has-data-cells: header row with zero data rows -->
+    <table>
+      <tr><th>Member</th><th>Role</th><th>Status</th></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Quick actions</h2>
+
+    <!-- flagship button-name case: ancestor-scoped nth-child under .toolbar,
+         classless button wrapping a capitalized custom-component icon -->
+    <div class="toolbar">
+      <button>Save</button>
+      <button class="secondary-action">Export</button>
+      <button aria-label="Menu"><CustomIcon></CustomIcon></button>
+    </div>
+
+    <!-- link-name: empty anchor, no text/aria-label/image -->
+    <p><a href="/reports/latest" aria-label="Latest"></a></p>
+
+    <!-- target-size: isolated clickable element far under the 24x24 CSS px minimum -->
+    <p>Mark reviewed <a href="#ack" class="tiny-target" aria-label="Acknowledge"></a></p>
+
+    <!-- tabindex: positive tabindex value disrupts natural focus order -->
+    <button tabindex="3">Refresh</button>
+
+    <!-- aria-valid-attr-value: aria-expanded set to a non-boolean token -->
+    <button aria-expanded="perhaps">Toggle filters</button>
+  </div>
+
+  <div class="card">
+    <h2>Update your profile</h2>
+    <form>
+      <!-- label: genuinely nameless input - no label, no placeholder, no aria-label, no title -->
+      <p><input type="text" id="promo-code" name="promo-code"></p>
+
+      <!-- label-title-only: accessible name comes only from title attribute -->
+      <p><input type="text" id="search-hint-field" name="hint" title="Search"></p>
+
+      <!-- autocomplete-valid: invalid autocomplete token -->
+      <p><input type="text" id="ac-field" name="favcolor" autocomplete="bogus-value"></p>
+
+      <!-- select-name: no label/aria-label/title associated -->
+      <p><select id="lonely-select" aria-label="Lonely Select"><option>Engineering</option><option>Design</option></select></p>
+
+      <!-- input-button-name: no value, no aria-label -->
+      <p><input type="button" id="raw-btn"></p>
+
+      <!-- aria-required-attr: role=checkbox missing required aria-checked -->
+      <p><div role="checkbox" tabindex="0" id="notify-checkbox">Notify me</div></p>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Status</h2>
+    <!-- svg-img-alt: role=img SVG with no accessible name -->
+    <svg role="img" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#2454a8"></circle></svg>
+
+    <!-- object-alt: no accessible name via title/aria-label/text -->
+    <object data="chart.svg" type="image/svg+xml" width="160" height="90"></object>
+
+    <!-- empty-heading: heading with no text content -->
+    <h2></h2>
+
+    <!-- aria-command-name: role=button with no accessible name -->
+    <span role="button" tabindex="0" class="tiny-target"></span>
+
+    <!-- nested-interactive: interactive element nested inside another -->
+    <button id="nested-btn"><a href="#details">View details</a></button>
+
+    <!-- aria-roles: invalid/nonexistent ARIA role value -->
+    <div>Sync complete</div>
+
+    <!-- aria-required-parent: role requires a specific parent context it doesn't have here -->
+    <div role="option">Preview theme</div>
+
+    <!-- aria-hidden-focus: a focusable control left inside an aria-hidden container -->
+    <div aria-hidden="true" class="visually-tiny"><button>Hidden but still focusable</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Team notes</h2>
+    <!-- list: non-li direct child of ul -->
+    <ul>
+      <li>Kickoff scheduled</li>
+      <div>Standalone note (not a list item)</div>
+    </ul>
+
+    <!-- definition-list: stray element between dt/dd pairs -->
+    <dl>
+      <dt>Sprint</dt>
+      <dd>14</dd>
+      <p>Stray paragraph inside a definition list</p>
+    </dl>
+
+    <!-- duplicate-id-aria: id referenced by aria-describedby exists twice -->
+    <p><button aria-describedby="shared-tip">Info</button></p>
+    <span id="shared-tip" class="muted">Helper text</span>
+    <span id="shared-tip" class="muted" hidden>Duplicate helper text</span>
+
+    <!-- scrollable-region-focusable: scrollable region with no focusable way in -->
+    <div class="scrollbox">Release notes: this build improves sync latency, fixes a rare crash on
+      export, and refines the weekly digest email layout across every supported client and device size.</div>
+  </div>
+
+  <div class="card">
+    <h2>Resources</h2>
+    <!-- frame-title: iframe with no title -->
+    <iframe src="about:blank" width="300" height="120"></iframe>
+
+    <!-- video-caption: no track kind=captions -->
+    <video controls width="300"><source src="demo.mp4" type="video/mp4"></video>
+
+    <!-- landmark-unique: a second, indistinguishable navigation landmark -->
+    <nav><a href="#top">Back to top</a></nav>
+  </div>
+
+</div>
+<!-- landmark-one-main + region + bypass: no <main> landmark and no skip link anywhere on the page -->
+<footer>&copy; 2026 TaskFlow Analytics</footer>
+</body>
+</html>
