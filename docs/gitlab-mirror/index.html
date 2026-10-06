@@ -21,6 +21,14 @@
   .tiny-target { display:inline-block; width:10px; height:10px; background:#2454a8; border-radius:2px; }
   .scrollbox { height:70px; overflow-y:scroll; border:1px solid #e1e3e6; padding:8px; font-size:12px; }
   .visually-tiny { position:absolute; width:1px; height:1px; overflow:hidden; }
+  .team-grid { display:flex; flex-wrap:wrap; gap:10px; }
+  .team-grid img { width:56px; height:56px; border-radius:50%; background:#ccd0d5; }
+  .low-contrast { color:#aab0b8; text-decoration:none; font-size:13px; }
+  .icon-toolbar { display:flex; flex-wrap:wrap; gap:8px; }
+  .icon-toolbar button { border:1px solid #ccd0d5; background:#f8f9fa; width:32px; height:32px; border-radius:4px; cursor:pointer; }
+  .icon-toolbar button .ico { display:block; width:14px; height:14px; margin:0 auto; background:#72767b; border-radius:2px; }
+  .field-row { display:flex; flex-wrap:wrap; gap:10px; }
+  .field-row input { padding:6px 8px; border:1px solid #ccd0d5; border-radius:4px; }
   footer { text-align:center; padding:20px; font-size:12px; color: #6c7077; }
 </style>
 </head>
@@ -165,6 +173,90 @@
 
     <!-- landmark-unique: a second, indistinguishable navigation landmark -->
     <nav><a href="#top">Back to top</a></nav>
+  </div>
+
+  <div class="card">
+    <h2>Team directory</h2>
+    <!-- image-alt x20: profile photo grid, none carry an alt attribute -->
+    <div class="team-grid">
+      <img src="https://via.placeholder.com/56?text=1"><img src="https://via.placeholder.com/56?text=2">
+      <img src="https://via.placeholder.com/56?text=3"><img src="https://via.placeholder.com/56?text=4">
+      <img src="https://via.placeholder.com/56?text=5"><img src="https://via.placeholder.com/56?text=6">
+      <img src="https://via.placeholder.com/56?text=7"><img src="https://via.placeholder.com/56?text=8">
+      <img src="https://via.placeholder.com/56?text=9"><img src="https://via.placeholder.com/56?text=10">
+      <img src="https://via.placeholder.com/56?text=11"><img src="https://via.placeholder.com/56?text=12">
+      <img src="https://via.placeholder.com/56?text=13"><img src="https://via.placeholder.com/56?text=14">
+      <img src="https://via.placeholder.com/56?text=15"><img src="https://via.placeholder.com/56?text=16">
+      <img src="https://via.placeholder.com/56?text=17"><img src="https://via.placeholder.com/56?text=18">
+      <img src="https://via.placeholder.com/56?text=19"><img src="https://via.placeholder.com/56?text=20">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Contact the team</h2>
+    <!-- label x10: every field below has no label, placeholder, aria-label or title -->
+    <form class="field-row">
+      <input type="text" name="c_first_name">
+      <input type="text" name="c_last_name">
+      <input type="text" name="c_job_title">
+      <input type="text" name="c_company">
+      <input type="email" name="c_email">
+      <input type="tel" name="c_phone">
+      <input type="text" name="c_department">
+      <input type="text" name="c_location">
+      <input type="text" name="c_manager">
+      <input type="text" name="c_extension">
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Quick links</h2>
+    <!-- color-contrast x15: light grey text on a near-white background, well under 4.5:1 -->
+    <p>
+      <a class="low-contrast" href="#billing">Billing history</a> &middot;
+      <a class="low-contrast" href="#invoices">Invoices</a> &middot;
+      <a class="low-contrast" href="#usage">Usage report</a> &middot;
+      <a class="low-contrast" href="#limits">Plan limits</a> &middot;
+      <a class="low-contrast" href="#api-keys">API keys</a> &middot;
+      <a class="low-contrast" href="#webhooks">Webhooks</a> &middot;
+      <a class="low-contrast" href="#audit-log">Audit log</a> &middot;
+      <a class="low-contrast" href="#sso">SSO settings</a> &middot;
+      <a class="low-contrast" href="#roles">Roles &amp; permissions</a> &middot;
+      <a class="low-contrast" href="#exports">Data exports</a> &middot;
+      <a class="low-contrast" href="#retention">Retention policy</a> &middot;
+      <a class="low-contrast" href="#status-page">Status page</a> &middot;
+      <a class="low-contrast" href="#changelog">Changelog</a> &middot;
+      <a class="low-contrast" href="#support">Support</a> &middot;
+      <a class="low-contrast" href="#feedback">Feedback</a>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Toolbar</h2>
+    <!-- button-name x10: icon-only buttons, no text/aria-label/title -->
+    <div class="icon-toolbar">
+      <button><i class="ico"></i></button><button><i class="ico"></i></button><button><i class="ico"></i></button>
+      <button><i class="ico"></i></button><button><i class="ico"></i></button><button><i class="ico"></i></button>
+      <button><i class="ico"></i></button><button><i class="ico"></i></button><button><i class="ico"></i></button>
+      <button><i class="ico"></i></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Related articles</h2>
+    <!-- link-name x10: anchors with an href but no text content -->
+    <ul>
+      <li><a href="#article-1"></a></li>
+      <li><a href="#article-2"></a></li>
+      <li><a href="#article-3"></a></li>
+      <li><a href="#article-4"></a></li>
+      <li><a href="#article-5"></a></li>
+      <li><a href="#article-6"></a></li>
+      <li><a href="#article-7"></a></li>
+      <li><a href="#article-8"></a></li>
+      <li><a href="#article-9"></a></li>
+      <li><a href="#article-10"></a></li>
+    </ul>
   </div>
 
 </div>
