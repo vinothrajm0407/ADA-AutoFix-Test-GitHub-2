@@ -6,12 +6,11 @@
 const fs = require("fs");
 
 const BASE = process.env.ADA_API_BASE;
-const EMAIL = process.env.ADA_API_EMAIL;
-const PASSWORD = process.env.ADA_API_PASSWORD;
+const API_KEY = process.env.ADA_API_KEY;
 const SITE_URL = process.env.ADA_SITE_URL;
 
-if (!BASE || !EMAIL || !PASSWORD || !SITE_URL) {
-  console.error("Missing one of ADA_API_BASE / ADA_API_EMAIL / ADA_API_PASSWORD / ADA_SITE_URL");
+if (!BASE || !API_KEY || !SITE_URL) {
+  console.error("Missing one of ADA_API_BASE / ADA_API_KEY / ADA_SITE_URL");
   process.exit(1);
 }
 
@@ -62,18 +61,7 @@ async function postPrComment(markdown) {
 }
 
 async function main() {
-  const loginRes = await fetch(`${BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...NGROK_HEADER },
-    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-  });
-  const loginData = await loginRes.json();
-  if (!loginData.ok) {
-    console.error("Login failed:", loginData.error || loginRes.status);
-    process.exit(1);
-  }
-  const token = loginData.token;
-  const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...NGROK_HEADER };
+  const authHeaders = { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json", ...NGROK_HEADER };
 
   const scanRes = await fetch(`${BASE}/api/scan`, {
     method: "POST",
