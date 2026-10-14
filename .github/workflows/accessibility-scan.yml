@@ -3,7 +3,12 @@ name: Accessibility Scan
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch: {}
+
+permissions:
+  pull-requests: write
 
 jobs:
   scan:
@@ -17,4 +22,5 @@ jobs:
           ADA_API_EMAIL: ${{ secrets.ADA_API_EMAIL }}
           ADA_API_PASSWORD: ${{ secrets.ADA_API_PASSWORD }}
           ADA_SITE_URL: https://vinothrajm0407.github.io/ADA-AutoFix-Test-GitHub-2/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/ada-scan.js
