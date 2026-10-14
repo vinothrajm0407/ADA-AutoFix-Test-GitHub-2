@@ -21,6 +21,19 @@ if (!BASE || !EMAIL || !PASSWORD || !SITE_URL) {
 // hit on every request. Harmless on a real hosted backend later.
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
+// Turns a raw URL into a friendly page name for non-technical readers,
+// e.g. "https://site.com/" -> "Home Page", ".../contact-us" -> "Contact Us".
+function derivePageName(url) {
+  try {
+    const path = new URL(url).pathname.replace(/\/$/, "");
+    if (!path) return "Home Page";
+    const slug = path.split("/").filter(Boolean).pop();
+    return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  } catch {
+    return url;
+  }
+}
+
 // Posts the scan summary as a comment on the triggering PR, using the
 // GITHUB_TOKEN GitHub Actions already provides automatically — no extra
 // secret needed. No-op if this run wasn't triggered by a pull_request.
@@ -105,21 +118,20 @@ async function main() {
   const passed = violations.length === 0;
   const critical = violations.filter((v) => v.impact === "critical").length;
   const serious = violations.filter((v) => v.impact === "serious").length;
+  const pageName = derivePageName(SITE_URL);
 
   const lines = [
-    `### ${passed ? "✅" : "❌"} ADA Tool accessibility scan`,
+    `### ${passed ? "✅" : "❌"} ADA Tool accessibility scan — ${pageName}`,
     ``,
     passed
       ? `No accessibility problems found on this page. 🎉`
-      : `This page has **${violations.length} accessibility problem${violations.length === 1 ? "" : "s"}**, affecting **${totalElements} element${totalElements === 1 ? "" : "s"}** on the page (e.g. buttons, images, links). These could make the page harder or impossible to use for people with disabilities (screen reader users, keyboard-only users, low-vision users, etc.).`,
+      : `**${pageName}** has **${violations.length} accessibility problem${violations.length === 1 ? "" : "s"}** — ${critical} critical (must fix) and ${serious} serious (should fix) — affecting **${totalElements} element${totalElements === 1 ? "" : "s"}** on the page (e.g. buttons, images, links). These could make the page harder or impossible to use for people with disabilities (screen reader users, keyboard-only users, low-vision users, etc.).`,
     ``,
-    `**Page scanned:** ${SITE_URL}`,
+    `**Page scanned:** [${pageName}](${SITE_URL})`,
     ``,
   ];
   if (!passed) {
     lines.push(
-      `**Impact:** ${critical} critical (must fix), ${serious} serious (should fix)`,
-      ``,
       `> "Critical" means this blocks some users from using the page at all. "Serious" means it makes the page significantly harder to use, but not impossible.`,
       ``
     );
