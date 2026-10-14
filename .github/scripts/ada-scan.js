@@ -103,18 +103,30 @@ async function main() {
   }
 
   const passed = violations.length === 0;
+  const critical = violations.filter((v) => v.impact === "critical").length;
+  const serious = violations.filter((v) => v.impact === "serious").length;
+
   const lines = [
     `### ${passed ? "✅" : "❌"} ADA Tool accessibility scan`,
     ``,
-    `**Page:** ${SITE_URL}`,
-    `**Rules violated:** ${violations.length} | **Elements affected:** ${totalElements}`,
+    passed
+      ? `No accessibility problems found on this page. 🎉`
+      : `This page has **${violations.length} accessibility problem${violations.length === 1 ? "" : "s"}**, affecting **${totalElements} element${totalElements === 1 ? "" : "s"}** on the page (e.g. buttons, images, links). These could make the page harder or impossible to use for people with disabilities (screen reader users, keyboard-only users, low-vision users, etc.).`,
+    ``,
+    `**Page scanned:** ${SITE_URL}`,
     ``,
   ];
   if (!passed) {
-    lines.push(`| Impact | Rule | Elements |`);
+    lines.push(
+      `**Impact:** ${critical} critical (must fix), ${serious} serious (should fix)`,
+      ``,
+      `> "Critical" means this blocks some users from using the page at all. "Serious" means it makes the page significantly harder to use, but not impossible.`,
+      ``
+    );
+    lines.push(`| Impact | Problem | Where |`);
     lines.push(`|---|---|---|`);
     for (const v of violations) {
-      lines.push(`| ${v.impact} | ${v.id} | ${v.nodes?.length || 1} |`);
+      lines.push(`| ${v.impact} | ${v.id} | ${v.nodes?.length || 1} element(s) |`);
     }
   }
   await postPrComment(lines.join("\n"));
