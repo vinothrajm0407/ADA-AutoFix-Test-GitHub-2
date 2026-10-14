@@ -10,8 +10,18 @@ on:
 permissions:
   pull-requests: write
 
+concurrency:
+  group: accessibility-scan
+  cancel-in-progress: false
+
 jobs:
   scan:
+    # Auto-Fix opens its own PRs from "ada/fix/*" branches — without this
+    # guard, each of those PRs re-triggers this same workflow (pull_request
+    # trigger above), which scans again and opens MORE fix-PRs, which
+    # trigger more runs... an infinite cascade. This was live on 2026-10-14
+    # and created 280+ duplicate PRs before being caught.
+    if: ${{ !startsWith(github.head_ref, 'ada/fix/') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
