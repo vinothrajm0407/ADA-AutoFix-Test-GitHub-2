@@ -1,0 +1,20 @@
+name: Accessibility Scan
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ADA Tool accessibility scan
+        env:
+          ADA_API_BASE: ${{ secrets.ADA_API_BASE }}
+          ADA_API_EMAIL: ${{ secrets.ADA_API_EMAIL }}
+          ADA_API_PASSWORD: ${{ secrets.ADA_API_PASSWORD }}
+          ADA_SITE_URL: https://vinothrajm0407.github.io/ADA-AutoFix-Test-GitHub-2/
+        run: node .github/scripts/ada-scan.js
