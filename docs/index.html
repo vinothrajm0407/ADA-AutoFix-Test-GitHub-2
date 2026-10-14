@@ -92,13 +92,13 @@
     <h2>Update your profile</h2>
     <form>
       <!-- label: genuinely nameless input - no label, no placeholder, no aria-label, no title -->
-      <p><input type="text" id="promo-code" name="promo-code"></p>
+      <p><input type="text" id="promo-code" name="promo-code" aria-label="Promo Code"></p>
 
       <!-- label-title-only: accessible name comes only from title attribute -->
       <p><input type="text" id="search-hint-field" name="hint" title="Search"></p>
 
       <!-- autocomplete-valid: invalid autocomplete token -->
-      <p><input type="text" id="ac-field" name="favcolor" autocomplete="bogus-value"></p>
+      <p><input type="text" id="ac-field" name="favcolor" autocomplete="bogus-value" aria-label="Favcolor"></p>
 
       <!-- select-name: no label/aria-label/title associated -->
       <p><select id="lonely-select" aria-label="Lonely Select"><option>Engineering</option><option>Design</option></select></p>
@@ -208,16 +208,16 @@
     <h2>Contact the team</h2>
     <!-- label x10: every field below has no label, placeholder, aria-label or title -->
     <form class="field-row">
-      <input type="text" name="c_first_name">
-      <input type="text" name="c_last_name">
-      <input type="text" name="c_job_title">
-      <input type="text" name="c_company">
-      <input type="email" name="c_email">
-      <input type="tel" name="c_phone">
-      <input type="text" name="c_department">
-      <input type="text" name="c_location">
-      <input type="text" name="c_manager">
-      <input type="text" name="c_extension">
+      <input type="text" name="c_first_name" aria-label="C First Name">
+      <input type="text" name="c_last_name" aria-label="C Last Name">
+      <input type="text" name="c_job_title" aria-label="C Job Title">
+      <input type="text" name="c_company" aria-label="C Company">
+      <input type="email" name="c_email" aria-label="C Email">
+      <input type="tel" name="c_phone" aria-label="C Phone">
+      <input type="text" name="c_department" aria-label="C Department">
+      <input type="text" name="c_location" aria-label="C Location">
+      <input type="text" name="c_manager" aria-label="C Manager">
+      <input type="text" name="c_extension" aria-label="C Extension">
     </form>
   </div>
 
