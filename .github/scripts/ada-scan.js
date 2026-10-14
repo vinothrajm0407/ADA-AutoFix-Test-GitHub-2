@@ -3,6 +3,8 @@
 // Only reuses endpoints that already exist for the normal web app — no new
 // backend surface needed for this pilot.
 
+const fs = require("fs");
+
 const BASE = process.env.ADA_API_BASE;
 const EMAIL = process.env.ADA_API_EMAIL;
 const PASSWORD = process.env.ADA_API_PASSWORD;
@@ -18,6 +20,33 @@ if (!BASE || !EMAIL || !PASSWORD || !SITE_URL) {
 // which a fresh CI runner (never seen by that tunnel before) could otherwise
 // hit on every request. Harmless on a real hosted backend later.
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
+
+// Posts the scan summary as a comment on the triggering PR, using the
+// GITHUB_TOKEN GitHub Actions already provides automatically — no extra
+// secret needed. No-op if this run wasn't triggered by a pull_request.
+async function postPrComment(markdown) {
+  const token = process.env.GITHUB_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY; // "owner/repo"
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!token || !repo || !eventPath) return;
+
+  const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+  const prNumber = event.pull_request?.number;
+  if (!prNumber) return; // not a PR run (e.g. a push to main)
+
+  const res = await fetch(`https://api.github.com/repos/${repo}/issues/${prNumber}/comments`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body: markdown }),
+  });
+  if (!res.ok) {
+    console.error("Could not post PR comment:", res.status, await res.text());
+  }
+}
 
 async function main() {
   const loginRes = await fetch(`${BASE}/api/auth/login`, {
@@ -58,7 +87,9 @@ async function main() {
   }
 
   if (!job || job.status !== "completed") {
-    console.error("Scan did not complete in time:", job ? job.status : "no response");
+    const msg = `Scan did not complete in time: ${job ? job.status : "no response"}`;
+    console.error(msg);
+    await postPrComment(`### ❌ ADA Tool accessibility scan\n${msg}`);
     process.exit(1);
   }
 
@@ -71,7 +102,24 @@ async function main() {
     console.log(`  [${v.impact}] ${v.id} — ${v.nodes?.length || 1} element(s)`);
   }
 
-  if (violations.length > 0) {
+  const passed = violations.length === 0;
+  const lines = [
+    `### ${passed ? "✅" : "❌"} ADA Tool accessibility scan`,
+    ``,
+    `**Page:** ${SITE_URL}`,
+    `**Rules violated:** ${violations.length} | **Elements affected:** ${totalElements}`,
+    ``,
+  ];
+  if (!passed) {
+    lines.push(`| Impact | Rule | Elements |`);
+    lines.push(`|---|---|---|`);
+    for (const v of violations) {
+      lines.push(`| ${v.impact} | ${v.id} | ${v.nodes?.length || 1} |`);
+    }
+  }
+  await postPrComment(lines.join("\n"));
+
+  if (!passed) {
     console.log(`\n❌ Accessibility scan found ${totalElements} issue(s) across ${violations.length} rule(s).`);
     process.exit(1);
   }
