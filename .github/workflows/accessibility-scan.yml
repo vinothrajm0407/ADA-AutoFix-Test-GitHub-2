@@ -19,8 +19,7 @@ jobs:
       - name: Run ADA Tool accessibility scan
         env:
           ADA_API_BASE: ${{ secrets.ADA_API_BASE }}
-          ADA_API_EMAIL: ${{ secrets.ADA_API_EMAIL }}
-          ADA_API_PASSWORD: ${{ secrets.ADA_API_PASSWORD }}
+          ADA_API_KEY: ${{ secrets.ADA_API_KEY }}
           ADA_SITE_URL: https://vinothrajm0407.github.io/ADA-AutoFix-Test-GitHub-2/
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/ada-scan.js
