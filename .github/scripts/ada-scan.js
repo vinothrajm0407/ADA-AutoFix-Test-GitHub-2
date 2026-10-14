@@ -60,6 +60,27 @@ async function postPrComment(markdown) {
   }
 }
 
+// Runs the existing Auto-Fix pipeline for one violated rule (clone, patch,
+// build, re-scan, push a branch, open a PR) — same endpoint the app's own
+// "Fix All" button calls. Auto-Fix only ever proposes a PR, it never merges,
+// so this never changes the site itself without a human reviewing first.
+async function autoFixRule(authHeaders, violation) {
+  const res = await fetch(`${BASE}/api/auto-fix-batch`, {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      page_url: SITE_URL,
+      rule: { id: violation.id, description: violation.description },
+      nodes: violation.nodes,
+    }),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    return { rule: violation.id, status: "skipped", detail: data.error || `HTTP ${res.status}` };
+  }
+  return { rule: violation.id, status: data.status || "unknown", pr_url: data.pr_url, detail: data.error };
+}
+
 async function main() {
   const authHeaders = { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json", ...NGROK_HEADER };
 
@@ -127,6 +148,29 @@ async function main() {
     lines.push(`|---|---|---|`);
     for (const v of violations) {
       lines.push(`| ${v.impact} | ${v.id} | ${v.nodes?.length || 1} element(s) |`);
+    }
+
+    console.log("\nRunning Auto-Fix for each violated rule...");
+    const fixResults = [];
+    for (const v of violations) {
+      console.log(`  Auto-Fix: ${v.id}...`);
+      fixResults.push(await autoFixRule(authHeaders, v));
+    }
+    const opened = fixResults.filter((r) => r.pr_url);
+
+    lines.push(``, `#### 🛠️ Auto-Fix`);
+    if (opened.length > 0) {
+      lines.push(
+        ``,
+        `Auto-Fix opened ${opened.length} pull request${opened.length === 1 ? "" : "s"} with proposed fixes — ` +
+          `**nothing is merged automatically**, a human still has to review and approve each one.`,
+        ``
+      );
+      for (const r of opened) {
+        lines.push(`- [${r.rule}](${r.pr_url})`);
+      }
+    } else {
+      lines.push(``, `Auto-Fix couldn't open a pull request for any of these (e.g. no source repo connected for this page, or no safe automatic fix available).`);
     }
   }
   await postPrComment(lines.join("\n"));
