@@ -201,7 +201,16 @@ async function main() {
       }
     }
   }
-  await postPrComment(lines.join("\n"));
+
+  const summary = lines.join("\n");
+  await postPrComment(summary);
+
+  // GitHub's built-in Job Summary — shows this same content right on the
+  // workflow run page and the PR's Checks tab, no need to open the raw log
+  // or scroll a comment thread to see what happened.
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
+  }
 
   if (!passed) {
     console.log(`\n❌ Accessibility scan found ${totalElements} issue(s) across ${violations.length} rule(s).`);
