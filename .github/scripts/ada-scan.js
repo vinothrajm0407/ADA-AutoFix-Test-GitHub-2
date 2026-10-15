@@ -14,6 +14,17 @@ if (!BASE || !API_KEY || !SITE_URL) {
   process.exit(1);
 }
 
+// The 4 Assistive Testing modules — separate from the axe-core scan above,
+// each its own existing endpoint in the app. No Auto-Fix exists for these
+// (they're not element-level violations the same way axe rules are), so
+// this only reports pass/fail, same as the app's own Assistive Testing tab.
+const ASSISTIVE_MODULES = [
+  { key: "keyboard", path: "/api/assisted/keyboard", label: "Keyboard Navigation" },
+  { key: "contrast", path: "/api/assisted/color-contrast", label: "Color Contrast" },
+  { key: "page-structure", path: "/api/assisted/page-structure", label: "Page Structure" },
+  { key: "forms", path: "/api/assisted/forms", label: "Forms Accessibility" },
+];
+
 // The pilot's API base is an ngrok tunnel to a local dev machine — this
 // header skips ngrok's free-tier "confirm you trust this link" interstitial,
 // which a fresh CI runner (never seen by that tunnel before) could otherwise
@@ -94,6 +105,28 @@ async function autoFixRule(authHeaders, violation) {
   const reasons = [...new Set(results.filter((r) => r.status === "failed").map((r) => r.error).filter(Boolean))];
   if (!results.length && data.error) reasons.push(data.error);
   return { rule: violation.id, pr_url: data.pr_url || null, totalNodes, patchedCount, reasons };
+}
+
+// Runs one Assistive Testing module (keyboard/contrast/page-structure/forms)
+// against the site and returns its pass/fail plus any failed checks' labels
+// and details, same shape the app's own Assistive Testing tab already shows.
+async function runAssistiveModule(authHeaders, mod) {
+  try {
+    const res = await fetch(`${BASE}${mod.path}`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ url: SITE_URL }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      return { ...mod, passed: false, error: data.error || `HTTP ${res.status}`, failedChecks: [] };
+    }
+    const checks = data.result?.checks || [];
+    const failedChecks = checks.filter((c) => !c.passed);
+    return { ...mod, passed: !!data.result?.passed, failedChecks, error: null };
+  } catch (err) {
+    return { ...mod, passed: false, error: err.message, failedChecks: [] };
+  }
 }
 
 async function main() {
@@ -208,6 +241,36 @@ async function main() {
     }
   }
 
+  console.log("\nRunning Assistive Testing modules...");
+  const assistiveResults = [];
+  for (const mod of ASSISTIVE_MODULES) {
+    const r = await runAssistiveModule(authHeaders, mod);
+    assistiveResults.push(r);
+    if (r.error) {
+      console.log(`  ${r.label} -> could not run: ${r.error}`);
+    } else {
+      console.log(`  ${r.label} -> ${r.passed ? "PASSED" : `FAILED (${r.failedChecks.length} check(s))`}`);
+    }
+  }
+  const assistiveFailed = assistiveResults.filter((r) => !r.passed);
+
+  lines.push(``, `#### 🧪 Assistive Testing`, ``);
+  lines.push(`| Module | Result |`);
+  lines.push(`|---|---|`);
+  for (const r of assistiveResults) {
+    const status = r.error ? `⚠️ Could not run (${r.error})` : r.passed ? "✅ Passed" : `❌ Failed (${r.failedChecks.length} check(s))`;
+    lines.push(`| ${r.label} | ${status} |`);
+  }
+  const failedWithChecks = assistiveResults.filter((r) => !r.passed && !r.error && r.failedChecks.length);
+  if (failedWithChecks.length > 0) {
+    lines.push(``, `**Details:**`, ``);
+    for (const r of failedWithChecks) {
+      for (const c of r.failedChecks) {
+        lines.push(`- **${r.label}** — ${c.label || c.id}: ${c.details || "no detail given"}`);
+      }
+    }
+  }
+
   const summary = lines.join("\n");
   await postPrComment(summary);
 
@@ -218,11 +281,12 @@ async function main() {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
   }
 
-  if (!passed) {
-    console.log(`\n❌ Accessibility scan found ${totalElements} issue(s) across ${violations.length} rule(s).`);
+  if (!passed || assistiveFailed.length > 0) {
+    if (!passed) console.log(`\n❌ Accessibility scan found ${totalElements} issue(s) across ${violations.length} rule(s).`);
+    if (assistiveFailed.length > 0) console.log(`❌ ${assistiveFailed.length} Assistive Testing module(s) failed.`);
     process.exit(1);
   }
-  console.log("\n✅ No accessibility violations found.");
+  console.log("\n✅ No accessibility violations found, all Assistive Testing modules passed.");
 }
 
 main().catch((err) => {
