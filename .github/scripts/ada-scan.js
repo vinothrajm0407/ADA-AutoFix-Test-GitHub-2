@@ -83,6 +83,12 @@ async function autoFixRule(authHeaders, violation) {
   // with its own `error` when failed) — collecting the distinct reasons is
   // what lets us say *why* unfixed elements weren't fixed, not just that
   // they weren't.
+  if (data.duplicate) {
+    // A PR for this rule is already open from a previous run — nothing new
+    // was patched just now, so "0 of N" would misleadingly read as a
+    // failure when it's actually fully covered already.
+    return { rule: violation.id, pr_url: data.pr_url || null, totalNodes, patchedCount: totalNodes, reasons: [] };
+  }
   const results = data.results || [];
   const patchedCount = results.filter((r) => r.status === "patched" || r.status === "already_fixed").length;
   const reasons = [...new Set(results.filter((r) => r.status === "failed").map((r) => r.error).filter(Boolean))];
