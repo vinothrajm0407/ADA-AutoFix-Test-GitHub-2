@@ -65,6 +65,7 @@ async function postPrComment(markdown) {
 // "Fix All" button calls. Auto-Fix only ever proposes a PR, it never merges,
 // so this never changes the site itself without a human reviewing first.
 async function autoFixRule(authHeaders, violation) {
+  const totalNodes = violation.nodes?.length || 1;
   const res = await fetch(`${BASE}/api/auto-fix-batch`, {
     method: "POST",
     headers: authHeaders,
@@ -76,9 +77,17 @@ async function autoFixRule(authHeaders, violation) {
   });
   const data = await res.json();
   if (!data.ok) {
-    return { rule: violation.id, status: "skipped", detail: data.error || `HTTP ${res.status}` };
+    return { rule: violation.id, pr_url: null, totalNodes, patchedCount: 0, reasons: [data.error || `HTTP ${res.status}`] };
   }
-  return { rule: violation.id, status: data.status || "unknown", pr_url: data.pr_url, detail: data.error };
+  // `results` has one entry per element (patched/already_fixed/failed, each
+  // with its own `error` when failed) — collecting the distinct reasons is
+  // what lets us say *why* unfixed elements weren't fixed, not just that
+  // they weren't.
+  const results = data.results || [];
+  const patchedCount = results.filter((r) => r.status === "patched" || r.status === "already_fixed").length;
+  const reasons = [...new Set(results.filter((r) => r.status === "failed").map((r) => r.error).filter(Boolean))];
+  if (!results.length && data.error) reasons.push(data.error);
+  return { rule: violation.id, pr_url: data.pr_url || null, totalNodes, patchedCount, reasons };
 }
 
 async function main() {
@@ -153,10 +162,18 @@ async function main() {
     console.log("\nRunning Auto-Fix for each violated rule...");
     const fixResults = [];
     for (const v of violations) {
-      console.log(`  Auto-Fix: ${v.id}...`);
-      fixResults.push(await autoFixRule(authHeaders, v));
+      const r = await autoFixRule(authHeaders, v);
+      fixResults.push(r);
+      // CLI/log output: the full reason, right here, not just pass/fail —
+      // this is what shows up in the Actions run log for anyone who opens it.
+      if (r.pr_url) {
+        console.log(`  Auto-Fix: ${r.rule} -> PR opened (${r.patchedCount}/${r.totalNodes} elements): ${r.pr_url}`);
+      } else {
+        console.log(`  Auto-Fix: ${r.rule} -> NOT fixed. Reason(s): ${r.reasons.join("; ") || "unknown"}`);
+      }
     }
     const opened = fixResults.filter((r) => r.pr_url);
+    const notFixed = fixResults.filter((r) => !r.pr_url);
 
     lines.push(``, `#### 🛠️ Auto-Fix`);
     if (opened.length > 0) {
@@ -167,10 +184,21 @@ async function main() {
         ``
       );
       for (const r of opened) {
-        lines.push(`- [${r.rule}](${r.pr_url})`);
+        const partial = r.patchedCount < r.totalNodes ? ` (${r.patchedCount}/${r.totalNodes} elements fixed)` : "";
+        lines.push(`- [${r.rule}](${r.pr_url})${partial}`);
       }
-    } else {
-      lines.push(``, `Auto-Fix couldn't open a pull request for any of these (e.g. no source repo connected for this page, or no safe automatic fix available).`);
+    }
+    if (notFixed.length > 0) {
+      lines.push(
+        ``,
+        `**Not yet fixed (${notFixed.length} rule${notFixed.length === 1 ? "" : "s"}):**`,
+        ``,
+        `| Rule | Why it wasn't fixed |`,
+        `|---|---|`
+      );
+      for (const r of notFixed) {
+        lines.push(`| ${r.rule} | ${(r.reasons.join("; ") || "Unknown reason").replace(/\|/g, "\\|")} |`);
+      }
     }
   }
   await postPrComment(lines.join("\n"));
