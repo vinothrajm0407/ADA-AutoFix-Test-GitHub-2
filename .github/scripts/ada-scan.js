@@ -171,9 +171,91 @@ async function runAssistiveModule(authHeaders, mod) {
     }
     const checks = data.result?.checks || [];
     const failedChecks = checks.filter((c) => !c.passed);
-    return { ...mod, passed: !!data.result?.passed, failedChecks, error: null };
+    return { ...mod, passed: !!data.result?.passed, failedChecks, error: null, raw: data.result };
   } catch (err) {
     return { ...mod, passed: false, error: err.message, failedChecks: [] };
+  }
+}
+
+// ---- Assistive Auto-Fix --------------------------------------------------
+// Mirrors the app's Assistive Testing "Auto Fix" button (src/utils/
+// assistiveFixAdapter.js + the three *Module.jsx files): each failed issue is
+// turned into an axe-style rule and sent to POST /api/auto-fix, one issue per
+// call (one clone/build/re-scan/PR each). Capped per module so a noisy page
+// can't open dozens of PRs in one run.
+const MAX_ASSISTIVE_FIXES_PER_MODULE = 5;
+
+function slug(str) {
+  return (str || "issue").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60);
+}
+
+function assistiveRule(testType, message, detail, severity, ruleId) {
+  // Same shape as buildAssistiveViolation(); id is used inside a git branch
+  // name, so no ':' etc. A real axe ruleId (when the check wraps one) unlocks
+  // the free deterministic fixers instead of a Gemini call.
+  return {
+    id: ruleId || `assistive-${testType}-${slug(message)}`,
+    description: message,
+    help: message,
+    detail,
+    impact: severity === "error" ? "serious" : "moderate",
+  };
+}
+
+function collectAssistiveFixes(mod, raw) {
+  const out = [];
+  if (!raw) return out;
+  if (mod.key === "contrast") {
+    for (const item of raw.groupedTargets || raw.affectedSamples || []) {
+      const required = item.ratio?.required ?? 4.5;
+      const hasColors = item.fgColor && item.bgColor;
+      out.push({
+        label: `Insufficient color contrast: ${item.target}`,
+        rule: assistiveRule("contrast", `Insufficient color contrast${item.summary ? `: ${item.summary}` : ""}`,
+          `Current ratio ${item.ratio?.current ?? "?"}, required ${required}:1`, "error", "color-contrast"),
+        node: {
+          html: item.html || "",
+          target: item.target ? [item.target] : [],
+          any: hasColors ? [{ data: { fgColor: item.fgColor, bgColor: item.bgColor, expectedContrastRatio: `${required}:1` } }] : [],
+        },
+      });
+    }
+  } else if (mod.key === "page-structure") {
+    const ruleIds = { skipped_level: "heading-order", no_h1: "page-has-heading-one", unlabelled_navs: "landmark-unique" };
+    for (const i of [...(raw.headingIssues || []), ...(raw.landmarkIssues || [])]) {
+      out.push({
+        label: i.message,
+        rule: assistiveRule("page_structure", i.message, i.detail, i.severity, ruleIds[i.type]),
+        node: { html: i.html || "" },
+      });
+    }
+  } else if (mod.key === "forms") {
+    for (const i of raw.issues || []) {
+      out.push({
+        label: i.message,
+        rule: assistiveRule("forms", i.message, i.detail, i.severity, i.type === "missing_label" ? "label" : undefined),
+        node: { html: i.html || "", target: i.selector ? [i.selector] : [] },
+      });
+    }
+  }
+  return out;
+}
+
+async function autoFixAssistive(authHeaders, fix) {
+  try {
+    const res = await fetch(`${BASE}/api/auto-fix`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ page_url: SITE_URL, rule: fix.rule, node: fix.node }),
+    });
+    const data = await res.json();
+    if (!data.ok) return { label: fix.label, pr_url: null, reason: data.error || `HTTP ${res.status}` };
+    if (data.status === "already_fixed") return { label: fix.label, pr_url: null, reason: "Already fixed in the source" };
+    if (data.pr_url) return { label: fix.label, pr_url: data.pr_url, reason: null };
+    const failed = (data.steps || []).filter((s) => !s.ok).map((s) => `${s.name}: ${s.detail}`);
+    return { label: fix.label, pr_url: null, reason: data.error || failed.join("; ") || "Unknown reason" };
+  } catch (err) {
+    return { label: fix.label, pr_url: null, reason: err.message };
   }
 }
 
@@ -317,6 +399,33 @@ async function main() {
       for (const c of r.failedChecks) {
         lines.push(`- **${r.label}** — ${c.label || c.id}: ${c.details || "no detail given"}`);
       }
+    }
+  }
+
+  // Auto-Fix for failed Assistive Testing issues (same pipeline as the app's
+  // Assistive Testing "Auto Fix" button). Opens PRs only, never merges.
+  if (assistiveFailed.some((r) => !r.error)) {
+    console.log("\nRunning Auto-Fix for failed Assistive Testing issues...");
+    const assistiveFixLines = [];
+    for (const r of assistiveResults.filter((x) => !x.passed && !x.error)) {
+      const all = collectAssistiveFixes(r, r.raw);
+      const todo = all.slice(0, MAX_ASSISTIVE_FIXES_PER_MODULE);
+      if (!todo.length) continue;
+      assistiveFixLines.push(`**${r.label}**${all.length > todo.length ? ` (first ${todo.length} of ${all.length} issues)` : ""}`, ``);
+      for (const fix of todo) {
+        const f = await autoFixAssistive(authHeaders, fix);
+        if (f.pr_url) {
+          console.log(`  Assistive Auto-Fix [${r.label}] ${f.label} -> PR opened: ${f.pr_url}`);
+          assistiveFixLines.push(`- ✅ ${escapeForMarkdown(f.label)} → [PR](${f.pr_url})`);
+        } else {
+          console.log(`  Assistive Auto-Fix [${r.label}] ${f.label} -> NOT fixed. Reason: ${f.reason}`);
+          assistiveFixLines.push(`- ⚠️ ${escapeForMarkdown(f.label)} — ${escapeForMarkdown(truncate(f.reason, 200))}`);
+        }
+      }
+      assistiveFixLines.push(``);
+    }
+    if (assistiveFixLines.length) {
+      lines.push(``, `#### 🛠️ Assistive Testing Auto-Fix`, ``, `PRs only — nothing is merged automatically.`, ``, ...assistiveFixLines);
     }
   }
 
