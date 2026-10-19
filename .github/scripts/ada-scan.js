@@ -31,6 +31,17 @@ const ASSISTIVE_MODULES = [
 // hit on every request. Harmless on a real hosted backend later.
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
+// A tunnel/proxy hiccup (e.g. ngrok's HTML error page) must fail ONE call, not
+// crash the whole run and skip every remaining rule and module.
+async function readJson(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `Non-JSON response (HTTP ${res.status}): ${text.slice(0, 80).replace(/\s+/g, " ")}` };
+  }
+}
+
 // Keeps a code/HTML snippet from breaking the Markdown table/comment it's
 // embedded in (a `|` would split a table cell, a stray ``` would close the
 // code fence early).
@@ -134,7 +145,7 @@ async function autoFixRule(authHeaders, violation) {
       nodes: violation.nodes,
     }),
   });
-  const data = await res.json();
+  const data = await readJson(res);
   if (!data.ok) {
     return { rule: violation.id, pr_url: null, totalNodes, patchedCount: 0, reasons: [data.error || `HTTP ${res.status}`] };
   }
@@ -165,7 +176,7 @@ async function runAssistiveModule(authHeaders, mod) {
       headers: authHeaders,
       body: JSON.stringify({ url: SITE_URL }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!data.ok) {
       return { ...mod, passed: false, error: data.error || `HTTP ${res.status}`, failedChecks: [] };
     }
@@ -249,7 +260,7 @@ async function autoFixAssistive(authHeaders, fix) {
       headers: authHeaders,
       body: JSON.stringify({ page_url: SITE_URL, rule: fix.rule, node: fix.node }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!data.ok) return { label: fix.label, pr_url: null, reason: data.error || `HTTP ${res.status}` };
     if (data.status === "already_fixed") return { label: fix.label, pr_url: null, reason: "Already fixed in the source" };
     if (data.pr_url) return { label: fix.label, pr_url: data.pr_url, reason: null };
