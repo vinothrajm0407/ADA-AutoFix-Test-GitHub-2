@@ -199,6 +199,7 @@ function assistiveRule(testType, message, detail, severity, ruleId) {
     help: message,
     detail,
     impact: severity === "error" ? "serious" : "moderate",
+    sourceScanId: "assistive", // marks the PR/branch as an Assistive Testing fix
   };
 }
 
