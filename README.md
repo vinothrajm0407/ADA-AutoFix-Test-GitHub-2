@@ -8,3 +8,5 @@ testing the ADA Tool's Auto-Fix pipeline end-to-end.
 `package.json` is deliberately not included — its presence would make
 Auto-Fix attempt a real `npm install && npm run build`, which fails on a
 static site with no build tooling.
+
+<!-- rich report test 1792392812 -->
