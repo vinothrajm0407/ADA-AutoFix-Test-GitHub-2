@@ -31,6 +31,54 @@ const ASSISTIVE_MODULES = [
 // hit on every request. Harmless on a real hosted backend later.
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
+// Keeps a code/HTML snippet from breaking the Markdown table/comment it's
+// embedded in (a `|` would split a table cell, a stray ``` would close the
+// code fence early).
+function escapeForMarkdown(text) {
+  return (text || "").replace(/\|/g, "\\|").replace(/```/g, "'''");
+}
+
+function truncate(text, max = 300) {
+  if (!text) return "";
+  return text.length <= max ? text : text.slice(0, max) + "…";
+}
+
+// Builds the collapsible "Full technical details" section — one block per
+// violated rule with its plain-English description, WCAG mapping, and a few
+// real example elements (selector + HTML + axe's own fix guidance), so the
+// same comment works as a quick skim for anyone and a complete technical
+// record for a developer, without needing a separate report file.
+function buildDetailSection(violations) {
+  const parts = [`<details>`, `<summary><strong>Full technical details</strong> — click to expand</summary>`, ``];
+  for (const v of violations) {
+    const wcagTags = (v.tags || []).filter((t) => /^wcag\d/.test(t));
+    const nodes = v.nodes || [];
+    parts.push(
+      `#### \`${v.id}\` — ${escapeForMarkdown(v.help || v.description || "")}`,
+      ``,
+      `**Impact:** ${v.impact || "minor"} &nbsp;·&nbsp; **Elements affected:** ${nodes.length} &nbsp;·&nbsp; **WCAG:** ${wcagTags.join(", ") || "—"}`,
+      ``,
+      v.description ? `> ${escapeForMarkdown(v.description)}` : "",
+      ``
+    );
+    const examples = nodes.slice(0, 3);
+    for (const node of examples) {
+      const selector = Array.isArray(node.target) ? node.target.join(", ") : node.target;
+      parts.push(`<details>`, `<summary>Example: <code>${escapeForMarkdown(selector || "element")}</code></summary>`, ``);
+      if (node.html) parts.push("```html", truncate(node.html, 300), "```");
+      if (node.failureSummary) parts.push(``, `_${escapeForMarkdown(truncate(node.failureSummary, 300))}_`);
+      parts.push(``, `</details>`, ``);
+    }
+    if (nodes.length > examples.length) {
+      parts.push(`_…and ${nodes.length - examples.length} more element(s) affected by this rule._`, ``);
+    }
+    if (v.helpUrl) parts.push(`[Full rule documentation](${v.helpUrl})`, ``);
+    parts.push(`---`, ``);
+  }
+  parts.push(`</details>`);
+  return parts.join("\n");
+}
+
 // Turns a raw URL into a friendly page name for non-technical readers,
 // e.g. "https://site.com/" -> "Home Page", ".../contact-us" -> "Contact Us".
 function derivePageName(url) {
@@ -197,6 +245,7 @@ async function main() {
     for (const v of violations) {
       lines.push(`| ${v.impact} | ${v.id} | ${v.nodes?.length || 1} element(s) |`);
     }
+    lines.push(``, buildDetailSection(violations));
 
     console.log("\nRunning Auto-Fix for each violated rule...");
     const fixResults = [];
@@ -271,7 +320,14 @@ async function main() {
     }
   }
 
-  const summary = lines.join("\n");
+  let summary = lines.join("\n");
+  // GitHub caps a single comment at 65,536 characters — with many violated
+  // rules each carrying full HTML examples, a real page can get close. Trim
+  // from the end (the detail section) rather than fail the post outright.
+  const COMMENT_LIMIT = 60000;
+  if (summary.length > COMMENT_LIMIT) {
+    summary = summary.slice(0, COMMENT_LIMIT) + "\n\n…_(truncated — see the full log in the Actions run for everything)_";
+  }
   await postPrComment(summary);
 
   // GitHub's built-in Job Summary — shows this same content right on the
