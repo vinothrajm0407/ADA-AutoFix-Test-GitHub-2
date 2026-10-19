@@ -10,3 +10,5 @@ Auto-Fix attempt a real `npm install && npm run build`, which fails on a
 static site with no build tooling.
 
 <!-- rich report test 1792392812 -->
+
+<!-- retrigger 1792393122 -->
