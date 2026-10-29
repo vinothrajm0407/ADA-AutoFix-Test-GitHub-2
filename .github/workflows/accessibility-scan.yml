@@ -21,7 +21,11 @@ jobs:
     # trigger above), which scans again and opens MORE fix-PRs, which
     # trigger more runs... an infinite cascade. This was live on 2026-10-14
     # and created 280+ duplicate PRs before being caught.
-    if: ${{ !startsWith(github.head_ref, 'ada/fix/') }}
+    # Merging an Auto-Fix PR is a push to main; skip it too, otherwise every
+    # merged fix triggers a full rescan that opens another round of fix PRs.
+    if: >-
+      ${{ !startsWith(github.head_ref, 'ada/fix/')
+          && !contains(github.event.head_commit.message, '/ada/fix/') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
