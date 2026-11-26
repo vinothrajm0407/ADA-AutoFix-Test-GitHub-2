@@ -1,0 +1,20 @@
+# Added by ADA Tool — "Stop new problems": fails only on accessibility issues a PR adds.
+name: Accessibility
+on: pull_request
+permissions:
+  pull-requests: write
+jobs:
+  ada:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: vinothrajm0407/ADA_tool_refactored@main
+        with:
+          api-url: https://colonial-privacy-matrix.ngrok-free.dev
+          api-key: ${{ secrets.ADA_API_KEY }}
+          # Pages to check: change to where this PR's version runs (preview / staging).
+          # While it points at the live site the check passes — nothing is "new".
+          urls: |
+            https://vinothrajm0407.github.io/ADA-AutoFix-Test-GitHub-2/
+          fail-on: serious
+          # The live site: issues already there are listed but don't block.
+          baseline-urls: https://vinothrajm0407.github.io/ADA-AutoFix-Test-GitHub-2/
